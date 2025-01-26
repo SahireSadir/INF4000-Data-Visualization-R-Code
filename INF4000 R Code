@@ -1,0 +1,150 @@
+R Code:
+
+
+1.	FIRST STEP: DATA PREPROCESSING
+
+install.packages("readxl")     #This is for read my Excel data file
+library(readxl)
+
+install.packages("dplyr")      # I install this using for data manipulation
+library(dplyr)
+
+install.packages("ggplot2")    # I istall this for visualization process
+library("ggplot2")
+
+#Read my dataset and create a dataset named 'rawdata_putun' for this original raw dataset
+rawdata_putun <- read_excel("Annexes_4-10_2018_v2_website.xlsx")
+
+head(rawdata_putun)                # look the beginning several rows
+colnames(rawdata_putun)        # for looking column's names
+summary(rawdata_putun)          #overall looking the raw dataset information
+
+#This step for removing missing data, and filtered dataset labeled as 'tazlaklikdata_putun'
+tazlaklikdata_putun <- na.omit(rawdata_putun)
+colnames(tazlaklikdata_putun)                  #view the all columns' name in filtered data
+colSums(is.na(tazlaklikdata_putun))      #double-check is there any missing data after data cleaning
+str(tazlaklikdata_putun)                            #Looking the data structure after cleaning
+
+
+
+
+
+2.	SECOND STEP: CREATE 4 NEW DATASETS SEPARATELY FOR 4 TOPICS 
+
+This study has total 4 research topics. This step creates a separate dataset for each research topic.
+
+#TOPIC 1: put the relevant 3 colums in new dataset 'tima1' for Topic 1
+tima1 <- tazlaklikdata_putun[, c("Cancer Alliance", "% First diagnosis confirmed by second pathologist", "% Endoscopic treatment")]
+head(tima1)  #just for checking initial several rows 
+
+#TOPIC 2: put the related 2 columns in new dataset 'tima2' for Topic 2
+tima2 <- tazlaklikdata_putun[, c("Cancer Alliance", "% Treatment plan for active treatment")]
+head(tima2)  #just for checking
+
+#TOPIC 3: put the matching columns in new dataset 'tima3' for Topic 3
+tima3 <- tazlaklikdata_putun[, c("% First diagnosis confirmed by second pathologist", "% Curative surgical resection")]
+head(tima3)  #just for checking
+
+#TOPIC 4: put fitting columns in new dataset 'tima4' for Topic 4
+tima4 <- tazlaklikdata_putun[, c("Cancer Alliance", "% Curative surgical resection", "% Surveillance", "% No treatment")]
+head(tima4)  #just for checking
+
+
+
+
+
+
+3. THIRD STEP: VISUALIZATION FOR 4 TOPICS
+
+
+#TOPIC 1 VISUALIZATION – Grouped Bar Chart
+#Calculate the mean for visualize
+tima1ning_mean <- tima1 %>%
+  group_by(`Cancer Alliance`) %>%
+  summarise(
+    edr_baldur = mean(`% First diagnosis confirmed by second pathologist`, na.rm = TRUE),
+    ent_aynak = mean(`% Endoscopic treatment`, na.rm = TRUE)
+  )
+
+#building grouped bar chart for topic 1, named as 't1_bar'
+t1_bar <- ggplot(tima1ning_mean, aes(x = `Cancer Alliance`)) +
+  geom_bar(aes(y = edr_baldur, fill = "Preliminary Detection"), stat = "identity", position = "dodge") +
+  geom_bar(aes(y = ent_aynak, fill = "Diagnostic Staging"), stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("Preliminary Detection" = "blue", "Diagnostic Staging" = "pink")) +
+  labs(
+    title = "Geographical Differences in Early Diagnosis and Diagnostic Stage Assessments",
+    x = "Area (Cancer Alliance)",
+    y = "percentage (%)",
+    fill = "Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Save the bar chart in JPEG format on my desktop
+ggsave("/Users/sahiresadirjadid/Desktop/t1_bar.jpeg", plot = t1_bar, width = 10, height = 6, dpi = 300)
+
+
+
+
+
+#TOPIC 2 VISUALIZATION: I created the boxplot for Topic 2, boxplot named 't2_bar'
+t2_bar <- ggplot(tima2, aes(x = `Cancer Alliance`, y = `% Treatment plan for active treatment`)) +
+  geom_boxplot(fill = "yellow", color = "purple") +
+  labs(
+    title = "Geographical Disparities in Active Treatment Strategy",
+    x = "Area Name",
+    y = "(%)Percentage of Active Therapy's Agenda"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Save the boxplot in JPEG format on my desktop
+ggsave("/Users/sahiresadirjadid/Desktop/t2_bar.jpeg", plot = t2_bar, width = 10, height = 6, dpi = 300)
+
+
+
+
+
+#TOPIC 3 VISUALIZATION: I created the scatter plot for Topic 3, scatter plot named 't3_bar'
+t3_bar <- ggplot(tima3, aes(x = `% First diagnosis confirmed by second pathologist`, y = `% Curative surgical resection`)) +
+  geom_point(color = "orange", size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "darkgreen") +
+  labs(
+    title = "Association Between Initial detection and Surgical Cure",
+    x = "(%)Proportion of Early - Stage Diagnosis",
+    y = "(%)Percentage of Surgical Resection"
+  ) +
+  theme_minimal()
+
+# I calculated the correlation between `% First diagnosis confirmed by second pathologist` and `% Curative surgical resection`.
+cor.test(tima3$`% First diagnosis confirmed by second pathologist`, tima3$`% Curative surgical resection`)
+
+# Save the scatter plot in JPEG format on my desktop
+ggsave("/Users/sahiresadirjadid/Desktop/t3_bar.jpeg", plot = t3_bar, width = 10, height = 6, dpi = 300)
+
+
+
+
+
+#TOPIC 4 VISUALIZATION: I created the Stacked Bar Chart for Topic 4, named as 't4_bar'
+install.packages("tidyr")
+library(tidyr)
+
+tima4_bala <- tima4 %>%
+  pivot_longer(cols = c(`% Curative surgical resection`, `% Surveillance`, `% No treatment`),
+               names_to = "Therapy method",
+               values_to = "Ratio")
+
+t4_bar <- ggplot(tima4_bala, aes(x = `Cancer Alliance`, y = Ratio, fill = `Therapy method`)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(
+    title = "Allocation of Treatment Options by Different Region From 2012 to 2017",
+    x = "Name of Region (Cancer Alliance)",
+    y = "proportion (%)",
+    fill = "Type of Therapy"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Save to my desktop in JPEG formet
+ggsave("/Users/sahiresadirjadid/Desktop/t4_bar.jpeg", plot = t4_bar, width = 10, height = 6, dpi = 300)
