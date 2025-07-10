@@ -16,35 +16,99 @@ library(readxl)
 library(patchwork)
 library(ggplot2)
 
+getwd()
 
-raw_prim0_data <- read_excel("Annexes_4-10_2018_v2_website.xlsx")
+raw_prim0_data <- read_excel("~/Desktop/Annexes_4-10_2018_v2_website.xlsx")
 names(raw_prim0_data)  
 
 
-#CHART 1
+# Chart 1
+install.packages("tidyr")
+library(tidyr)
+
+# Step 2: Select required columns
+first1_chart_df1 <- raw_prim0_data[ , c("Cancer Alliance",
+                       "n Curative surgical resection",
+                       "n Endoscopic treatment",
+                       "n Surveillance",
+                       "n No treatment")]
+
+# Step 3: Remove rows with any missing values
+first1_chart_df1 <- na.omit(first1_chart_df1)
+
+# Step 4: Compute Active, Passive, and Total
+Active_Treatment <- first1_chart_df1$`n Curative surgical resection` + first1_chart_df1$`n Endoscopic treatment`
+Passive_Solution <- first1_chart_df1$`n Surveillance` + first1_chart_df1$`n No treatment`
+Total_all_Solutions <- Active_Treatment + Passive_Solution
+
+# Step 5: Compute percentages
+Active_Rate <- Active_Treatment / Total_all_Solutions
+Passive_Rate <- Passive_Solution / Total_all_Solutions
+
+# Step 6: Create a new dataframe with percentages
+clean_df1_chart1 <- data.frame(
+  "Cancer Alliance" = first1_chart_df1$`Cancer Alliance`,
+  "Active_Rate" = Active_Rate,
+  "Passive_Rate" = Passive_Rate,
+  check.names = FALSE
+)
+
+# Step 7: Reshape to long format for plotting
+re_plott1_df1 <- pivot_longer(clean_df1_chart1,
+                        cols = c("Active_Rate", "Passive_Rate"),
+                        names_to = "Treatment_Type",
+                        values_to = "Percentage")
+
+# Step 8: Clean label names
+re_plott1_df1$Treatment_Type <- ifelse(re_plott1_df1$Treatment_Type == "Active_Rate",
+                                 "Active (Surgical Resection + Endoscopy)",
+                                 "Passive (Surveillance + No Treatment)")
+
+# Step 9: Create the 100% stacked bar chart
+chart1_graf1 <- ggplot(re_plott1_df1, aes(x = `Cancer Alliance`, y = Percentage, fill = Treatment_Type)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(title = "Active vs Passive Treatment Solution by Region (Cancer Alliance)",
+       x = "Region name (Cancer Alliance)",
+       y = "Rates of Patients receive avtive or passive solution",
+       fill = "Type of Treatment") +
+  theme_minimal(base_size = 11) +
+  theme(plot.title = element_text(size = 8)) +
+  theme(axis.text.x = element_text(size = 4, angle = 48, hjust = 1)) +
+  theme(axis.text.y = element_text(size = 4)) +
+  theme(plot.title = element_text(face = "bold")) +
+  theme(legend.title = element_text(size = 7)) +
+  theme(legend.text  = element_text(size = 6))
+
+chart1_graf1
+
+
+
+#CHART 2
 # Step 1: Create a new dataframe with just the relevant columns
-first1_chart_df1 <- raw_prim0_data[ , c("Cancer Alliance", "% Curative surgical resection")]
+second2_chart_df2 <- raw_prim0_data[ , c("Cancer Alliance", "% Curative surgical resection")]
 
 # Step 2: Remove rows with missing values
-first1_chart_df1 <- na.omit(first1_chart_df1) 
+second2_chart_df2 <- na.omit(second2_chart_df2) 
 
 # Step 3: Sort the data in ascending order (optional but helps in visual clarity)
-first1_chart_df1 <- first1_chart_df1[order(first1_chart_df1$`% Curative surgical resection`), ]
+second2_chart_df2 <- second2_chart_df2[order(second2_chart_df2$`% Curative surgical resection`), ]
 
-head(first1_chart_df1)
+head(second2_chart_df2)
 
-
-summ1_first1_chart <- first1_chart_df1 %>%
+library(dplyr)
+library(ggplot2)
+summ2_second2_chart <- second2_chart_df2 %>%
   group_by(`Cancer Alliance`) %>%
   summarise(mean1_csr_ratio1 = mean(`% Curative surgical resection`, na.rm = TRUE)) %>%
   arrange(mean1_csr_ratio1)
 
 # Step 4: Create Ranked Horizontal Bar Chart
-chart1_graf1 <- ggplot(summ1_first1_chart, aes(x = reorder(`Cancer Alliance`, mean1_csr_ratio1), 
+chart2_graf2 <- ggplot(summ2_second2_chart, aes(x = reorder(`Cancer Alliance`, mean1_csr_ratio1), 
                            y = mean1_csr_ratio1)) +
   geom_bar(stat = "identity", fill = "pink") +
   coord_flip() +
-  labs(title = "Average % of receiving Surgical Resection by Region",
+  labs(title = "Average Rates of receiving Surgical Resection by Region",
        x = "Region (Cancer Alliance)",
        y = "% Mean of Curative Surgical Resection") +
   theme_minimal(base_size = 11) + 
@@ -52,41 +116,7 @@ chart1_graf1 <- ggplot(summ1_first1_chart, aes(x = reorder(`Cancer Alliance`, me
   theme(axis.text.y = element_text(size = 4)) +
   theme(plot.title = element_text(face = "bold"))
 
-chart1_graf1
-
-
-
-
-
-# CHART 2
-second2_chart_df2 <- raw_prim0_data[ , c("% Endoscopic treatment")]
-
-# Step 2: Remove missing values
-second2_chart_df2 <- na.omit(second2_chart_df2)
-
-# Step 3: Calculate the overall mean
-total_mean2_q2 <- mean(second2_chart_df2$`% Endoscopic treatment`)
-print(total_mean2_q2)
-
-# Step 4: Create the density plot
-chart2_graf2 <- ggplot(second2_chart_df2, aes(x = `% Endoscopic treatment`)) +
-  geom_density(fill = "yellow", alpha = 0.4) +
-  geom_vline(xintercept = total_mean2_q2, linetype = "dashed", color = "blue") +
-  labs(title = "Overall %Endoscopic Resection Distribution during Audit Period in England",
-       x = "% Endoscopic treatment",
-       y = "Density of receive endoscopic treatment",
-       subtitle = paste("Total Mean:", round(total_mean2_q2, 2), "%")) +
-  theme_minimal(base_size = 11) +
-  theme(plot.title = element_text(size = 8)) +
-  theme(axis.text.y = element_text(size = 4)) +
-  theme(plot.subtitle = element_text(size = 7)) +
-  theme(plot.title = element_text(face = "bold"))
-
 chart2_graf2
-
-
-
-
 
 
 
@@ -101,7 +131,7 @@ third3_chart_df3 <- na.omit(third3_chart_df3)
 chart3_graf3 <- ggplot(third3_chart_df3, aes(x = `N diagnosed`, y = `% Endoscopic treatment`)) +
   geom_point(color = "purple", size = 3, alpha = 0.6) +
   geom_smooth(method = "lm", color = "orange", se = TRUE) +
-  labs(title = "Association Between Volume of Diagnosis and %Endoscopic Resection",
+  labs(title = "Association Between Volume of Diagnosis and the Rate of Endoscopic Resection",
        x = "Volume of Diagnosed OG Cancer",
        y = "% Endoscopic Treatment Rate") +
   theme_minimal(base_size = 11) +
@@ -115,75 +145,40 @@ print(correlation3_q3_sual3)
 chart3_graf3
 
 
+# CHART 4
+fourth4_chart_df4 <- raw_prim0_data[ , c("% Endoscopic treatment")]
 
-
-
-
-
-# Chart 4
-
-# Step 2: Select required columns
-fourth4_chart_df4 <- raw_prim0_data[ , c("Cancer Alliance",
-                       "n Curative surgical resection",
-                       "n Endoscopic treatment",
-                       "n Surveillance",
-                       "n No treatment")]
-
-# Step 3: Remove rows with any missing values
+# Step 2: Remove missing values
 fourth4_chart_df4 <- na.omit(fourth4_chart_df4)
 
-# Step 4: Compute Active, Passive, and Total
-Active_Treatment <- fourth4_chart_df4$`n Curative surgical resection` + fourth4_chart_df4$`n Endoscopic treatment`
-Passive_Solution <- fourth4_chart_df4$`n Surveillance` + fourth4_chart_df4$`n No treatment`
-Total_all_Solutions <- Active_Treatment + Passive_Solution
+# Step 3: Calculate the overall mean
+total_mean4_q4 <- mean(fourth4_chart_df4$`% Endoscopic treatment`)
+print(total_mean4_q4)
 
-# Step 5: Compute percentages
-Active_Rate <- Active_Treatment / Total_all_Solutions
-Passive_Rate <- Passive_Solution / Total_all_Solutions
-
-# Step 6: Create a new dataframe with percentages
-clean_df4_chart4 <- data.frame(
-  "Cancer Alliance" = fourth4_chart_df4$`Cancer Alliance`,
-  "Active_Rate" = Active_Rate,
-  "Passive_Rate" = Passive_Rate,
-  check.names = FALSE
-)
-
-# Step 7: Reshape to long format for plotting
-re_plott4_df4 <- pivot_longer(clean_df4_chart4,
-                        cols = c("Active_Rate", "Passive_Rate"),
-                        names_to = "Treatment_Type",
-                        values_to = "Percentage")
-
-# Step 8: Clean label names
-re_plott4_df4$Treatment_Type <- ifelse(re_plott4_df4$Treatment_Type == "Active_Rate",
-                                 "Active (Surgical Resection + Endoscopy)",
-                                 "Passive (Surveillance + No Treatment)")
-
-# Step 9: Create the 100% stacked bar chart
-chart4_graf4 <- ggplot(re_plott4_df4, aes(x = `Cancer Alliance`, y = Percentage, fill = Treatment_Type)) +
-  geom_col(position = "fill") +
-  scale_y_continuous(labels = scales::percent_format()) +
-  labs(title = "Active vs Passive Treatment Solution by Region (Cancer Alliance)",
-       x = "Region name (Cancer Alliance)",
-       y = "% Patients receive avtive or passive solution",
-       fill = "Type of Treatment") +
+# Step 4: Create the density plot
+chart4_graf4 <- ggplot(fourth4_chart_df4, aes(x = `% Endoscopic treatment`)) +
+  geom_density(fill = "yellow", alpha = 0.4) +
+  geom_vline(xintercept = total_mean4_q4, linetype = "dashed", color = "blue") +
+  labs(title = "Overall Rate of Endoscopic Resection during Audit Period in England",
+       x = "% Endoscopic treatment",
+       y = "Density of receive endoscopic treatment",
+       subtitle = paste("Total Mean:", round(total_mean4_q4, 2))) +
   theme_minimal(base_size = 11) +
   theme(plot.title = element_text(size = 8)) +
-  theme(axis.text.x = element_text(size = 4, angle = 48, hjust = 1)) +
   theme(axis.text.y = element_text(size = 4)) +
-  theme(plot.title = element_text(face = "bold")) +
-  theme(legend.title = element_text(size = 7)) +
-  theme(legend.text  = element_text(size = 6))
+  theme(plot.subtitle = element_text(size = 7)) +
+  theme(plot.title = element_text(face = "bold"))
 
 chart4_graf4
 
 
 
 
-
 #Composite plot
-composite_birlaxkan <- (chart4_graf4 | chart1_graf1) / ( chart3_graf3 | chart2_graf2) &
+install.packages("patchwork")  # Run only once
+library(patchwork)
+
+composite_birlaxkan <- (chart1_graf1 | chart2_graf2) / ( chart3_graf3 | chart4_graf4) &
   theme(
     axis.title.x = element_text(size = 7, face = "plain"),
     axis.title.y = element_text(size = 7, face = "plain"))
@@ -192,3 +187,6 @@ composite_birlaxkan
 
 
 ggsave("~/Desktop/composite_graf.png", plot = composite_birlaxkan, width = 11.69, height = 8.27, dpi = 600) 
+
+
+
